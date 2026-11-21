@@ -20,6 +20,7 @@ from PIL import Image, ImageDraw, ImageFont
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "docs" / "video"
 WORK = ROOT / "dist" / "explainer-work"
+VIDEO_SLUG = "welcome-wave-workflow-explainer"
 WIDTH, HEIGHT, FPS = 1280, 720, 12
 INK = "#0a0a0a"
 PAPER = "#fafafa"
@@ -328,7 +329,7 @@ def write_srt(tracks: list[dict]):
         for cap in chapter["captions"]:
             n += 1
             lines.extend([str(n), f"{srt_time(cap['start'])} --> {srt_time(cap['end'])}", cap["text"], ""])
-    (OUT / "welcome-wave-workflow-explainer.srt").write_text("\n".join(lines))
+    (OUT / f"{VIDEO_SLUG}.srt").write_text("\n".join(lines))
 
 
 def frame(ci: int, progress: float, sentence: str, base: Image.Image, cards: list[Image.Image], captions: dict) -> Image.Image:
@@ -375,7 +376,7 @@ def render(tracks: list[dict], seconds: float, preview: bool):
         sheet.save(WORK / "contact-sheet.jpg", quality=90)
         print(WORK / "contact-sheet.jpg")
         return
-    mp4 = OUT / "welcome-wave-workflow-explainer.mp4"
+    mp4 = OUT / f"{VIDEO_SLUG}.mp4"
     cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-f", "rawvideo", "-pixel_format", "rgb24",
            "-video_size", f"{WIDTH}x{HEIGHT}", "-framerate", str(FPS), "-i", "-", "-i", str(WORK / "narration.wav"),
            "-c:v", "libx264", "-preset", "veryfast", "-crf", "21", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "160k",

@@ -1,5 +1,7 @@
 # Welcome Wave hackathon demo: Welcome-Kit as the evidence source
 
+The short narrated animated overview is [welcome-wave-welcome-kit-demo.mp4](video/welcome-wave-welcome-kit-demo.mp4). Use the steps below for the real screen recording, which shows actual app responses.
+
 Welcome Wave is the product in this recording. [Welcome-Kit](https://github.com/VijayabaskarR-06/welcome-kit) is the small public engineering repository and onboarding experience that Welcome Wave indexes and explains. Its mission ticks and field notes are browser-local; they do not sync into Welcome Wave.
 
 ## Before recording

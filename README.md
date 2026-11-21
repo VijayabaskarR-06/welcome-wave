@@ -22,6 +22,7 @@ know what was explained, we also know what never was: the KT coverage map, the K
 |---|---|
 | [docs/PROJECT_GUIDE.md](docs/PROJECT_GUIDE.md) | Start here: complete orientation, local run, workflows, architecture, data, security, integrations, tests and limits |
 | [docs/video/welcome-wave-workflow-explainer.mp4](docs/video/welcome-wave-workflow-explainer.mp4) | Narrated animated workflow with a new-hire example |
+| [docs/video/welcome-wave-welcome-kit-demo.mp4](docs/video/welcome-wave-welcome-kit-demo.mp4) | 97-second animated hackathon walkthrough showing how Welcome-Kit becomes Welcome Wave's real code source |
 | [docs/USER_GUIDE.md](docs/USER_GUIDE.md) | Each role: what Home shows, the main tasks step by step, where things live |
 | [docs/ADMIN_GUIDE.md](docs/ADMIN_GUIDE.md) | Setup, GitHub, Google Calendar, Calendly, people and roles, templates, audit log, export and deletion, retention, flags, rate limits, LangSmith |
 | [docs/LEGAL.md](docs/LEGAL.md) | Terms, privacy policy, data processing, recording notice: what is in the product, what to fill in, what a lawyer must decide (drafts, not legal advice) |

@@ -50,7 +50,7 @@ server {
 
   # Content-Security-Policy for the web app (the API sets its own, stricter one on its responses). Checked against the
   # production build: no inline scripts (index.html loads /boot-theme.js and /boot-words.js as files), no eval or
-  # new Function in the bundles, so script-src needs neither 'unsafe-inline' nor 'unsafe-eval'.
+  # new Function in the bundles. Voice's Agora SDK compiles WebAssembly, so allow only wasm-unsafe-eval, not JS eval.
   #   script-src   Firebase Auth's Google sign-in loads apis.google.com/js/api.js; Identity Platform's reCAPTCHA protection,
   #                when it is turned on, loads www.google.com/recaptcha and www.gstatic.com/recaptcha.
   #   style-src    'unsafe-inline': the intro's <style> block in index.html, and style attributes the sign-in libraries set.
@@ -60,12 +60,11 @@ server {
   #   frame-src    Firebase Auth's hidden iframe on the auth domain (<project>.firebaseapp.com or .web.app) and Google
   #                sign-in; reCAPTCHA's challenge frame. A custom auth domain must be added here.
   #   media-src    KT recordings: /api/blobs (self-hosted), signed Cloud Storage URLs (Google Cloud), blob: for a local preview.
-  #   worker-src   'self' only: the app starts no workers. (A three.js loader that starts one from a blob: URL, such as DRACO
-  #                or KTX2, would need blob: here, and a WebAssembly decoder 'wasm-unsafe-eval' in script-src; add them in the
-  #                change that ships one.)
+  #   worker-src   'self' only: the app starts no workers. A three.js loader that starts one from a blob: URL would need
+  #                blob: here in the change that ships it.
   # Google Meet and Calendly links are ordinary links that open elsewhere: nothing to allow.
   set $csp "default-src 'self';";
-  set $csp "$csp script-src 'self' https://apis.google.com https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/;";
+  set $csp "$csp script-src 'self' 'wasm-unsafe-eval' https://apis.google.com https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/;";
   set $csp "$csp style-src 'self' 'unsafe-inline';";
   set $csp "$csp font-src 'self';";
   set $csp "$csp img-src 'self' data: blob:;";

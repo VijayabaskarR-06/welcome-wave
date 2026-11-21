@@ -36,6 +36,9 @@ def test_csp_allows_only_what_the_app_uses():
     policy = csp()
     assert policy["default-src"] == ["'self'"]
     assert "https://storage.googleapis.com" in policy["connect-src"]  # the signed direct upload of a recording on Google Cloud
+    for domain in ("agora.io", "sd-rtn.com", "rtnsvc.com", "rtesvc.com"):
+        assert f"https://*.{domain}:*" in policy["connect-src"]
+        assert f"wss://*.{domain}:*" in policy["connect-src"]  # Agora selects non-default WebSocket ports
     assert not {"'unsafe-inline'", "'unsafe-eval'"} & set(policy["script-src"])
     assert "'wasm-unsafe-eval'" in policy["script-src"]  # Agora audio compiles WebAssembly without allowing JS eval
     assert policy["worker-src"] == ["'self'", "blob:"]  # Agora audio uses same-origin blob workers

@@ -55,8 +55,8 @@ server {
   #                when it is turned on, loads www.google.com/recaptcha and www.gstatic.com/recaptcha.
   #   style-src    'unsafe-inline': the intro's <style> block in index.html, and style attributes the sign-in libraries set.
   #                React's style props are applied through the CSSOM, which CSP does not govern. Fonts: Google Fonts (Geist).
-  #   connect-src  Firebase Auth's REST endpoints; Cloud Storage, where the browser uploads a KT recording through a signed
-  #                URL on Google Cloud (api/uploads.py). Everything else goes to /api on this origin.
+  #   connect-src  Firebase Auth's REST endpoints; Cloud Storage uploads; Agora RTC and Signaling use agora.io,
+  #                sd-rtn.com and related service domains on dynamically selected HTTPS/WSS ports.
   #   frame-src    Firebase Auth's hidden iframe on the auth domain (<project>.firebaseapp.com or .web.app) and Google
   #                sign-in; reCAPTCHA's challenge frame. A custom auth domain must be added here.
   #   media-src    KT recordings: /api/blobs (self-hosted), signed Cloud Storage URLs (Google Cloud), blob: for a local preview.
@@ -67,7 +67,7 @@ server {
   set $csp "$csp style-src 'self' 'unsafe-inline';";
   set $csp "$csp font-src 'self';";
   set $csp "$csp img-src 'self' data: blob:;";
-  set $csp "$csp connect-src 'self' https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://storage.googleapis.com https://*.agora.io wss://*.agora.io https://*.agora.com wss://*.agora.com;";
+  set $csp "$csp connect-src 'self' https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://storage.googleapis.com https://*.agora.io:* wss://*.agora.io:* https://*.agora.com:* wss://*.agora.com:* https://*.sd-rtn.com:* wss://*.sd-rtn.com:* https://*.rtnsvc.com:* wss://*.rtnsvc.com:* https://*.rtesvc.com:* wss://*.rtesvc.com:*;";
   set $csp "$csp frame-src https://*.firebaseapp.com https://*.web.app https://accounts.google.com https://apis.google.com https://www.google.com/recaptcha/ https://recaptcha.google.com/recaptcha/;";
   set $csp "$csp media-src 'self' blob: https://storage.googleapis.com;";
   set $csp "$csp worker-src 'self' blob:;";

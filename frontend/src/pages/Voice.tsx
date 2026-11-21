@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import AgoraRTC, { type IAgoraRTCClient, type IMicrophoneAudioTrack, type IRemoteAudioTrack } from "agora-rtc-sdk-ng";
-import { RTMClient, type RTMEvents } from "agora-rtm-sdk";
+import AgoraRTM, { type RTMClient, type RTMEvents } from "agora-rtm-sdk";
 import { api } from "../api";
+import { useLive } from "../live";
 import { useSession } from "../session";
 import "./Voice.css";
 
@@ -22,6 +23,7 @@ export default function Voice() {
   const [phase, setPhase] = useState<"idle" | "starting" | "live" | "stopping" | "error">("idle");
   const [status, setStatus] = useState("Ready when you are");
   const [error, setError] = useState("");
+  const [transcriptNotice, setTranscriptNotice] = useState("");
   const [saved, setSaved] = useState<Saved | null>(null);
   const [history, setHistory] = useState<Saved[]>([]);
   const [turns, setTurns] = useState<Turn[]>([]);
@@ -34,13 +36,24 @@ export default function Voice() {
   const remoteAudio = useRef<IRemoteAudioTrack | null>(null);
   const current = useRef<Prepared | null>(null);
   const seen = useRef(new Set<string>());
+  const refreshAvailability = useCallback(async () => {
+    try {
+      const v = await api<{ available: boolean; reason: string | null }>(`/voice/config?project_id=${encodeURIComponent(project.id)}`);
+      setAvailable(v.available); setReason(v.reason ?? "");
+    } catch (e) {
+      setAvailable(false); setReason(e instanceof Error ? e.message : "Could not check Voice availability");
+    }
+  }, [project.id]);
+
+  useLive(["lifecycle", "people"], () => { void refreshAvailability(); }, project.id);
 
   useEffect(() => {
-    api<{ available: boolean; reason: string | null }>(`/voice/config?project_id=${encodeURIComponent(project.id)}`).then(v => { setAvailable(v.available); setReason(v.reason ?? ""); })
-      .catch(e => { setAvailable(false); setReason(e.message); });
+    void refreshAvailability();
+    const onVisible = () => { if (document.visibilityState === "visible") void refreshAvailability(); };
+    document.addEventListener("visibilitychange", onVisible);
     api<Saved[]>(`/voice/sessions?project_id=${encodeURIComponent(project.id)}`).then(setHistory).catch(() => {});
-    return () => { void release(); };
-  }, [project.id]);
+    return () => { document.removeEventListener("visibilitychange", onVisible); void release(); };
+  }, [project.id, refreshAvailability]);
 
   useEffect(() => {
     if (!saved?.id || phase !== "live") return;
@@ -78,12 +91,15 @@ export default function Voice() {
   function onMessage(event: RTMEvents.MessageEvent, sessionId: string) {
     let payload: any;
     try { payload = JSON.parse(event.message as string); } catch { return; }
-    if (payload?.type !== "transcript") return;
+    const agoraTranscript = payload?.object === "user.transcription" || payload?.object === "assistant.transcription";
+    if (!agoraTranscript && payload?.type !== "transcript") return;
     const text = String(payload.text ?? "").trim();
-    const speaker: Turn["speaker"] = payload.role === "user" ? "employee" : "assistant";
+    const speaker: Turn["speaker"] = payload.object === "user.transcription" || payload.role === "user" ? "employee" : "assistant";
     if (!text) return;
     setStatus(speaker === "assistant" ? "Assistant speaking" : "Listening to you");
-    if (payload.final === false) return;
+    if (payload.object === "user.transcription" && payload.final !== true) return;
+    if (payload.object === "assistant.transcription" && payload.turn_status === 0) return;
+    if (!agoraTranscript && payload.final === false) return;
     const key = `${payload.turn_id ?? ""}:${speaker}:${text}`;
     if (seen.current.has(key)) return;
     seen.current.add(key);
@@ -91,9 +107,37 @@ export default function Voice() {
     void api(`/voice/sessions/${sessionId}/transcript`, { method: "POST", body: JSON.stringify({ speaker, text }) }).catch(() => {});
   }
 
+  async function connectSignaling(prepared: Prepared) {
+    let signaling: RTMClient | null = null;
+    let timer: number | undefined;
+    try {
+      signaling = new AgoraRTM.RTM(prepared.app_id, String(prepared.uid));
+      rtm.current = signaling;
+      const timeout = new Promise<never>((_, reject) => {
+        timer = window.setTimeout(() => reject(new Error("Signaling timed out")), 12000);
+      });
+      await Promise.race([signaling.login({ token: prepared.rtc_token }), timeout]);
+      if (current.current?.id !== prepared.id) {
+        if (rtm.current === signaling) rtm.current = null;
+        void signaling.logout().catch(() => {});
+        return;
+      }
+      signaling.addEventListener("message", e => onMessage(e, prepared.id));
+      await Promise.race([signaling.subscribe(prepared.channel), timeout]);
+    } catch {
+      if (current.current?.id === prepared.id) {
+        setTranscriptNotice("Live transcript is unavailable. Your audio conversation can continue.");
+      }
+      if (rtm.current === signaling) rtm.current = null;
+      if (signaling) void signaling.logout().catch(() => {});
+    } finally {
+      if (timer !== undefined) window.clearTimeout(timer);
+    }
+  }
+
   async function start() {
     if (phase !== "idle" && phase !== "error") return;
-    setError(""); setPhase("starting"); setStatus("Requesting microphone access"); setSaved(null); setTurns([]); seen.current.clear();
+    setError(""); setTranscriptNotice(""); setPhase("starting"); setStatus("Requesting microphone access"); setSaved(null); setTurns([]); seen.current.clear();
     let prepared: Prepared | null = null;
     try {
       const track = await AgoraRTC.createMicrophoneAudioTrack();
@@ -114,11 +158,7 @@ export default function Voice() {
       });
       await client.join(prepared.app_id, prepared.channel, prepared.rtc_token, prepared.uid);
       await client.publish(track);
-      const signaling = new RTMClient(prepared.app_id, String(prepared.uid));
-      rtm.current = signaling;
-      await signaling.login({ token: prepared.rtc_token });
-      signaling.addEventListener("message", e => onMessage(e, prepared!.id));
-      await signaling.subscribe(prepared.channel);
+      void connectSignaling(prepared);
       setStatus("Connecting assistant");
       const activated = await api<Saved>(`/voice/sessions/${prepared.id}/activate`, { method: "POST" });
       setSaved(activated);
@@ -168,8 +208,10 @@ export default function Voice() {
         <div className={`voice-orb voice-orb-${phase}`} aria-hidden="true"><div className="voice-orb-inner">W</div></div>
         <div className="voice-levels" aria-hidden="true">{Array.from({ length: 31 }, (_, i) => <span key={i} style={{ height: `${12 + Math.max(levels[0], levels[1]) * 65 + (Math.sin(i * .7) + 1) * (phase === "live" ? 8 : 2)}px` }} />)}</div>
         <div className="voice-state-copy"><strong>{status}</strong><p>{phase === "live" ? "Speak naturally. You can interrupt the assistant at any time." :
-          available === false ? reason : "Your assistant can explain project knowledge and prepare follow-up work."}</p></div>
+          available === false ? reason : "Your assistant can explain project knowledge and prepare follow-up work."}</p>
+          {available === false && <button className="voice-recheck" type="button" onClick={() => { void refreshAvailability(); }}>Check again</button>}</div>
         {error && <p className="voice-error" role="alert">{error}</p>}
+        {transcriptNotice && phase === "live" && <p className="voice-transcript-notice" role="status">{transcriptNotice}</p>}
         <div className="voice-controls">
           {phase === "live" ? <><button className="voice-secondary" onClick={() => { void mic.current?.setEnabled(muted); setMuted(!muted); }}>{muted ? "Unmute" : "Mute"}</button>
             <button className="voice-end" onClick={stop}>End conversation</button></> :

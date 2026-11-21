@@ -110,9 +110,11 @@ jobs:
           if grep -lE "(^|[^.a-zA-Z0-9_$])eval\(|new Function\(" dist/assets/*.js; then
             echo "A bundle uses eval or new Function, which the CSP blocks."; exit 1
           fi
-          # worker-src is 'self' only: a worker started from a blob: URL would be blocked
+          # Agora's audio SDK starts blob workers; the production policy must allow that exact source.
           if grep -lE "new (Shared)?Worker\(" dist/assets/*.js; then
-            echo "A bundle starts a worker: check worker-src in frontend/nginx.conf.template allows where it comes from."; exit 1
+            grep -Fq "worker-src 'self' blob:;" nginx.conf.template || {
+              echo "A bundle starts a worker, but worker-src does not allow its same-origin blob URL."; exit 1;
+            }
           fi
           python3 - <<'EOF'
           import re, sys

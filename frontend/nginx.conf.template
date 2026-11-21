@@ -60,8 +60,7 @@ server {
   #   frame-src    Firebase Auth's hidden iframe on the auth domain (<project>.firebaseapp.com or .web.app) and Google
   #                sign-in; reCAPTCHA's challenge frame. A custom auth domain must be added here.
   #   media-src    KT recordings: /api/blobs (self-hosted), signed Cloud Storage URLs (Google Cloud), blob: for a local preview.
-  #   worker-src   'self' only: the app starts no workers. A three.js loader that starts one from a blob: URL would need
-  #                blob: here in the change that ships it.
+  #   worker-src   Agora's audio SDK creates workers from same-origin blob URLs. No other worker source is allowed.
   # Google Meet and Calendly links are ordinary links that open elsewhere: nothing to allow.
   set $csp "default-src 'self';";
   set $csp "$csp script-src 'self' 'wasm-unsafe-eval' https://apis.google.com https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/;";
@@ -71,7 +70,7 @@ server {
   set $csp "$csp connect-src 'self' https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://storage.googleapis.com https://*.agora.io wss://*.agora.io https://*.agora.com wss://*.agora.com;";
   set $csp "$csp frame-src https://*.firebaseapp.com https://*.web.app https://accounts.google.com https://apis.google.com https://www.google.com/recaptcha/ https://recaptcha.google.com/recaptcha/;";
   set $csp "$csp media-src 'self' blob: https://storage.googleapis.com;";
-  set $csp "$csp worker-src 'self';";
+  set $csp "$csp worker-src 'self' blob:;";
   set $csp "$csp object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'";
   set $permissions "accelerometer=(), bluetooth=(), browsing-topics=(), camera=(), display-capture=(), geolocation=(), gyroscope=(), hid=(), magnetometer=(), microphone=(self), midi=(), payment=(), serial=(), usb=(), xr-spatial-tracking=()";
 

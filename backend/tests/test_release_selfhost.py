@@ -37,7 +37,8 @@ def test_csp_allows_only_what_the_app_uses():
     assert policy["default-src"] == ["'self'"]
     assert "https://storage.googleapis.com" in policy["connect-src"]  # the signed direct upload of a recording on Google Cloud
     assert not {"'unsafe-inline'", "'unsafe-eval'"} & set(policy["script-src"])
-    assert policy["worker-src"] == ["'self'"]  # no blob: workers: the app starts none
+    assert "'wasm-unsafe-eval'" in policy["script-src"]  # Agora audio compiles WebAssembly without allowing JS eval
+    assert policy["worker-src"] == ["'self'", "blob:"]  # Agora audio uses same-origin blob workers
     assert policy["frame-ancestors"] == ["'none'"] and policy["object-src"] == ["'none'"] and policy["base-uri"] == ["'none'"]
 
 
